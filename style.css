@@ -1,0 +1,26 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+
+#task-form {
+  margin-bottom: 20px;
+}
+
+.column {
+  width: 30%;
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 2%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.task {
+  padding: 8px;
+  margin: 5px 0;
+  background: #f5f5f5;
+  border-radius: 4px;
+  cursor: grab;
+}

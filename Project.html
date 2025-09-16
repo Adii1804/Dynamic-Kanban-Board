@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Kanban Board</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+        font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .task-form {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+        backdrop-filter: blur(10px);
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .add-btn {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .kanban-board {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .column {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        min-height: 400px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+      }
+
+      .column h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 1.2rem;
+      }
+
+      .column[data-status="todo"] h2 {
+        background: linear-gradient(45deg, #ff9a9e, #fecfef);
+        color: #8b5a5a;
+      }
+
+      .column[data-status="inprogress"] h2 {
+        background: linear-gradient(45deg, #a8edea, #fed6e3);
+        color: #5a7a8b;
+      }
+
+      .column[data-status="done"] h2 {
+        background: linear-gradient(45deg, #d299c2, #fef9d7);
+        color: #6b8b5a;
+      }
+
+      .task-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        cursor: grab;
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+      }
+
+      .task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+      }
+
+      .task-card.dragging {
+        opacity: 0.7;
+        transform: rotate(5deg);
+        cursor: grabbing;
+      }
+
+      .task-card[data-status="todo"] {
+        border-left-color: #ff6b6b;
+      }
+
+      .task-card[data-status="inprogress"] {
+        border-left-color: #4ecdc4;
+      }
+
+      .task-card[data-status="done"] {
+        border-left-color: #95e1d3;
+      }
+
+      .task-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 1.1rem;
+      }
+
+      .task-description {
+        color: #666;
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .task-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        font-size: 0.8rem;
+        color: #999;
+      }
+
+      .delete-btn {
+        background: #ff6b6b;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s ease;
+      }
+
+      .delete-btn:hover {
+        background: #ff5252;
+        transform: scale(1.1);
+      }
+
+      .column.drag-over {
+        background: rgba(102, 126, 234, 0.1);
+        border: 2px dashed #667eea;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #999;
+        font-style: italic;
+        padding: 40px 20px;
+      }
+
+      @media (max-width: 768px) {
+        .kanban-board {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 2rem;
+        }
+
+        .task-form {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎯 Dynamic Kanban Board</h1>
+
+      <div class="task-form">
+        <form id="taskForm">
+          <div class="form-group">
+            <label for="taskTitle">Task Title</label>
+            <input
+              type="text"
+              id="taskTitle"
+              placeholder="Enter task title..."
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="taskDescription">Task Description</label>
+            <textarea
+              id="taskDescription"
+              placeholder="Enter task description..."
+            ></textarea>
+          </div>
+          <button type="submit" class="add-btn">➕ Add Task</button>
+        </form>
+      </div>
+
+      <div class="kanban-board" id="kanbanBoard">
+        <div class="column" data-status="todo">
+          <h2>📋 To Do</h2>
+          <div class="task-list" id="todoList">
+            <div class="empty-state">
+              No tasks yet. Add some tasks to get started!
+            </div>
+          </div>
+        </div>
+
+        <div class="column" data-status="inprogress">
+          <h2>⚡ In Progress</h2>
+          <div class="task-list" id="inprogressList">
+            <div class="empty-state">
+              Drag tasks here when you start working on them
+            </div>
+          </div>
+        </div>
+
+        <div class="column" data-status="done">
+          <h2>✅ Done</h2>
+          <div class="task-list" id="doneList">
+            <div class="empty-state">Completed tasks will appear here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const DOMUtils = {
+        createElement(tag, attributes = {}, content = "") {
+          const element = document.createElement(tag);
+
+          Object.keys(attributes).forEach((key) => {
+            if (key === "className") {
+              element.className = attributes[key];
+            } else if (key.startsWith("data-")) {
+              element.setAttribute(key, attributes[key]);
+            } else {
+              element[key] = attributes[key];
+            }
+          });
+
+          if (content) {
+            element.innerHTML = content;
+          }
+
+          return element;
+        },
+
+        findElement(selector) {
+          const element = document.querySelector(selector);
+          if (!element) {
+            console.error(`Element not found: ${selector}`);
+          }
+          return element;
+        },
+
+        addEvent(element, event, handler) {
+          if (element && typeof handler === "function") {
+            element.addEventListener(event, handler);
+          } else {
+            console.error("Invalid element or handler for event:", event);
+          }
+        },
+      };
+
+      const StorageUtils = {
+        save(key, data) {
+          try {
+            localStorage.setItem(key, JSON.stringify(data));
+            return true;
+          } catch (error) {
+            console.error("Failed to save to localStorage:", error);
+            return false;
+          }
+        },
+
+        load(key, defaultValue = null) {
+          try {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultValue;
+          } catch (error) {
+            console.error("Failed to load from localStorage:", error);
+            return defaultValue;
+          }
+        },
+
+        remove(key) {
+          try {
+            localStorage.removeItem(key);
+            return true;
+          } catch (error) {
+            console.error("Failed to remove from localStorage:", error);
+            return false;
+          }
+        },
+      };
+
+      class Task {
+        constructor(title, description, status = "todo") {
+          this.id = this.generateId();
+          this.title = title;
+          this.description = description;
+          this.status = status;
+          this.createdAt = new Date().toISOString();
+        }
+
+        generateId() {
+          return (
+            "task_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
+          );
+        }
+
+        updateStatus(newStatus) {
+          const validStatuses = ["todo", "inprogress", "done"];
+          if (validStatuses.includes(newStatus)) {
+            this.status = newStatus;
+            return true;
+          }
+          return false;
+        }
+
+        toJSON() {
+          return {
+            id: this.id,
+            title: this.title,
+            description: this.description,
+            status: this.status,
+            createdAt: this.createdAt,
+          };
+        }
+
+        static fromJSON(data) {
+          const task = new Task(data.title, data.description, data.status);
+          task.id = data.id;
+          task.createdAt = data.createdAt;
+          return task;
+        }
+      }
+
+      class TaskManager {
+        constructor() {
+          this.tasks = [];
+          this.storageKey = "kanban_tasks";
+          this.loadTasks();
+        }
+
+        addTask(title, description) {
+          if (!title || !title.trim()) {
+            throw new Error("Task title is required");
+          }
+
+          const task = new Task(title.trim(), description.trim());
+          this.tasks.push(task);
+          this.saveTasks();
+          return task;
+        }
+
+        deleteTask(taskId) {
+          const index = this.tasks.findIndex((task) => task.id === taskId);
+          if (index > -1) {
+            this.tasks.splice(index, 1);
+            this.saveTasks();
+            return true;
+          }
+          return false;
+        }
+
+        updateTaskStatus(taskId, newStatus) {
+          const task = this.tasks.find((task) => task.id === taskId);
+          if (task && task.updateStatus(newStatus)) {
+            this.saveTasks();
+            return true;
+          }
+          return false;
+        }
+
+        getTasksByStatus(status) {
+          return this.tasks.filter((task) => task.status === status);
+        }
+
+        getAllTasks() {
+          return [...this.tasks];
+        }
+
+        saveTasks() {
+          const tasksData = this.tasks.map((task) => task.toJSON());
+          StorageUtils.save(this.storageKey, tasksData);
+        }
+
+        loadTasks() {
+          const tasksData = StorageUtils.load(this.storageKey, []);
+          this.tasks = tasksData.map((data) => Task.fromJSON(data));
+        }
+      }
+
+      class DragDropHandler {
+        constructor(taskManager, renderer) {
+          this.taskManager = taskManager;
+          this.renderer = renderer;
+          this.draggedElement = null;
+          this.setupEventListeners();
+        }
+
+        setupEventListeners() {
+          const kanbanBoard = DOMUtils.findElement("#kanbanBoard");
+
+          DOMUtils.addEvent(kanbanBoard, "dragstart", (e) =>
+            this.handleDragStart(e)
+          );
+          DOMUtils.addEvent(kanbanBoard, "dragend", (e) =>
+            this.handleDragEnd(e)
+          );
+          DOMUtils.addEvent(kanbanBoard, "dragover", (e) =>
+            this.handleDragOver(e)
+          );
+          DOMUtils.addEvent(kanbanBoard, "dragenter", (e) =>
+            this.handleDragEnter(e)
+          );
+          DOMUtils.addEvent(kanbanBoard, "dragleave", (e) =>
+            this.handleDragLeave(e)
+          );
+          DOMUtils.addEvent(kanbanBoard, "drop", (e) => this.handleDrop(e));
+        }
+
+        handleDragStart(e) {
+          if (!e.target.classList.contains("task-card")) return;
+
+          this.draggedElement = e.target;
+          e.target.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/html", e.target.outerHTML);
+          e.dataTransfer.setData("text/plain", e.target.dataset.taskId);
+        }
+
+        handleDragEnd(e) {
+          if (!e.target.classList.contains("task-card")) return;
+
+          e.target.classList.remove("dragging");
+          this.draggedElement = null;
+
+          document.querySelectorAll(".column").forEach((column) => {
+            column.classList.remove("drag-over");
+          });
+        }
+
+        handleDragOver(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }
+
+        handleDragEnter(e) {
+          e.preventDefault();
+
+          const column = e.target.closest(".column");
+          if (column && this.draggedElement) {
+            column.classList.add("drag-over");
+          }
+        }
+
+        handleDragLeave(e) {
+          const column = e.target.closest(".column");
+          if (column && !column.contains(e.relatedTarget)) {
+            column.classList.remove("drag-over");
+          }
+        }
+
+        handleDrop(e) {
+          e.preventDefault();
+
+          const column = e.target.closest(".column");
+          if (!column || !this.draggedElement) return;
+
+          const taskId = e.dataTransfer.getData("text/plain");
+          const newStatus = column.dataset.status;
+
+          if (this.taskManager.updateTaskStatus(taskId, newStatus)) {
+            this.renderer.renderBoard();
+          }
+
+          column.classList.remove("drag-over");
+        }
+
+        makeDraggable(element) {
+          element.draggable = true;
+        }
+      }
+
+      class BoardRenderer {
+        constructor(taskManager) {
+          this.taskManager = taskManager;
+        }
+
+        renderBoard() {
+          this.renderColumn("todo");
+          this.renderColumn("inprogress");
+          this.renderColumn("done");
+        }
+
+        renderColumn(status) {
+          const tasks = this.taskManager.getTasksByStatus(status);
+          const listId =
+            status === "inprogress" ? "inprogressList" : status + "List";
+          const taskList = DOMUtils.findElement(`#${listId}`);
+
+          if (!taskList) return;
+
+          taskList.innerHTML = "";
+
+          if (tasks.length === 0) {
+            const emptyState = DOMUtils.createElement(
+              "div",
+              { className: "empty-state" },
+              this.getEmptyStateMessage(status)
+            );
+            taskList.appendChild(emptyState);
+          } else {
+            tasks.forEach((task) => {
+              const taskElement = this.createTaskElement(task);
+              taskList.appendChild(taskElement);
+            });
+          }
+        }
+
+        createTaskElement(task) {
+          const taskCard = DOMUtils.createElement("div", {
+            className: "task-card",
+            "data-task-id": task.id,
+            "data-status": task.status,
+          });
+
+          taskCard.draggable = true;
+
+          const title = DOMUtils.createElement(
+            "div",
+            { className: "task-title" },
+            this.escapeHtml(task.title)
+          );
+
+          const description = DOMUtils.createElement(
+            "div",
+            { className: "task-description" },
+            this.escapeHtml(task.description) || "No description"
+          );
+
+          const meta = this.createTaskMeta(task);
+
+          taskCard.appendChild(title);
+          taskCard.appendChild(description);
+          taskCard.appendChild(meta);
+
+          return taskCard;
+        }
+
+        createTaskMeta(task) {
+          const meta = DOMUtils.createElement("div", {
+            className: "task-meta",
+          });
+
+          const date = DOMUtils.createElement(
+            "span",
+            {},
+            new Date(task.createdAt).toLocaleDateString()
+          );
+
+          const deleteBtn = DOMUtils.createElement(
+            "button",
+            {
+              className: "delete-btn",
+              title: "Delete task",
+            },
+            "×"
+          );
+
+          DOMUtils.addEvent(deleteBtn, "click", (e) => {
+            e.stopPropagation();
+            this.handleDeleteTask(task.id);
+          });
+
+          meta.appendChild(date);
+          meta.appendChild(deleteBtn);
+
+          return meta;
+        }
+
+        handleDeleteTask(taskId) {
+          if (confirm("Are you sure you want to delete this task?")) {
+            if (this.taskManager.deleteTask(taskId)) {
+              this.renderBoard();
+            }
+          }
+        }
+
+        getEmptyStateMessage(status) {
+          const messages = {
+            todo: "No tasks yet. Add some tasks to get started!",
+            inprogress: "Drag tasks here when you start working on them",
+            done: "Completed tasks will appear here",
+          };
+          return messages[status] || "No tasks here";
+        }
+
+        escapeHtml(text) {
+          const map = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;",
+          };
+          return text.replace(/[&<>"']/g, function (m) {
+            return map[m];
+          });
+        }
+      }
+
+      class FormHandler {
+        constructor(taskManager, renderer) {
+          this.taskManager = taskManager;
+          this.renderer = renderer;
+          this.form = DOMUtils.findElement("#taskForm");
+          this.titleInput = DOMUtils.findElement("#taskTitle");
+          this.descriptionInput = DOMUtils.findElement("#taskDescription");
+
+          this.setupEventListeners();
+        }
+
+        setupEventListeners() {
+          DOMUtils.addEvent(this.form, "submit", (e) => this.handleSubmit(e));
+        }
+
+        handleSubmit(e) {
+          e.preventDefault();
+
+          const title = this.titleInput.value.trim();
+          const description = this.descriptionInput.value.trim();
+
+          if (!title) {
+            alert("Please enter a task title");
+            this.titleInput.focus();
+            return;
+          }
+
+          try {
+            this.taskManager.addTask(title, description);
+
+            this.clearForm();
+
+            this.renderer.renderBoard();
+
+            this.titleInput.focus();
+          } catch (error) {
+            alert("Error creating task: " + error.message);
+          }
+        }
+
+        clearForm() {
+          this.titleInput.value = "";
+          this.descriptionInput.value = "";
+        }
+      }
+
+      class KanbanApp {
+        constructor() {
+          this.taskManager = null;
+          this.renderer = null;
+          this.dragDropHandler = null;
+          this.formHandler = null;
+
+          this.init();
+        }
+
+        init() {
+          try {
+            this.taskManager = new TaskManager();
+            this.renderer = new BoardRenderer(this.taskManager);
+
+            this.dragDropHandler = new DragDropHandler(
+              this.taskManager,
+              this.renderer
+            );
+            this.formHandler = new FormHandler(this.taskManager, this.renderer);
+
+            this.renderer.renderBoard();
+
+            const titleInput = DOMUtils.findElement("#taskTitle");
+            if (titleInput) titleInput.focus();
+
+            console.log("🎯 Kanban Board initialized successfully!");
+          } catch (error) {
+            console.error("Failed to initialize Kanban Board:", error);
+            alert(
+              "Failed to initialize the application. Please refresh the page."
+            );
+          }
+        }
+
+        getStats() {
+          const tasks = this.taskManager.getAllTasks();
+          return {
+            total: tasks.length,
+            todo: this.taskManager.getTasksByStatus("todo").length,
+            inProgress: this.taskManager.getTasksByStatus("inprogress").length,
+            done: this.taskManager.getTasksByStatus("done").length,
+          };
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        window.kanbanApp = new KanbanApp();
+      });
+
+      window.KanbanUtils = {
+        DOMUtils,
+        StorageUtils,
+        Task,
+      };
+    </script>
+  </body>
+</html>
